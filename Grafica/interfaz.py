@@ -1,124 +1,16 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
-import numpy as np
 import matplotlib.pyplot as plt
-import scipy.stats as stats
 import pandas as pd
-from tabulate import tabulate
 
-# ==========================================
-# LÓGICA MATEMÁTICA Y ESTADÍSTICA
-# ==========================================
+# Importamos la lógica desde nuestras otras carpetas
+from Generadores.algoritmos import (
+    generador_cuadrado_medio, generador_fibonacci,
+    generador_congruencial_mixto, generador_congruencial_multiplicativo,
+    escalar_valores
+)
+from Estadistica.pruebas import test_chi_cuadrado, test_correlacion_serial
 
-def generador_cuadrado_medio(semilla, n_iteraciones):
-    resultados = []
-    x_actual = semilla
-    digitos = len(str(semilla))
-    
-    for i in range(n_iteraciones):
-        cuadrado = x_actual ** 2
-        cuadrado_str = str(cuadrado).zfill(digitos * 2)
-        inicio = digitos // 2
-        fin = inicio + digitos
-        centro_str = cuadrado_str[inicio:fin]
-        
-        x_siguiente = int(centro_str)
-        u_i = x_siguiente / (10 ** digitos)
-        
-        resultados.append({
-            'i': i + 1, 'X_i': x_actual, 'X_i^2': cuadrado, 
-            'Dig_Centrales': centro_str, 'U_i': u_i
-        })
-        x_actual = x_siguiente
-        
-    return pd.DataFrame(resultados), [r['U_i'] for r in resultados]
-
-def generador_fibonacci(x0, x1, m, n_iteraciones):
-    resultados = []
-    secuencia = [x0, x1]
-    
-    for i in range(n_iteraciones):
-        x_siguiente = (secuencia[-1] + secuencia[-2]) % m
-        u_i = x_siguiente / m
-        
-        resultados.append({
-            'i': i + 1, 'X_i-1': secuencia[-2], 'X_i': secuencia[-1], 
-            'X_i+1': x_siguiente, 'U_i': u_i
-        })
-        secuencia.append(x_siguiente)
-        
-    return pd.DataFrame(resultados), [r['U_i'] for r in resultados]
-
-def generador_congruencial_mixto(x0, a, c, m, n_iteraciones):
-    resultados = []
-    x_actual = x0
-    valores_vistos = {}
-    periodo = None
-    buscar_periodo = True
-    
-    for i in range(n_iteraciones):
-        x_siguiente = (a * x_actual + c) % m
-        u_i = x_siguiente / m
-        
-        resultados.append({
-            'i': i + 1, 'X_i': x_actual, 'aX_i+c': a * x_actual + c, 
-            'X_i+1': x_siguiente, 'U_i': u_i
-        })
-        
-        # Límite de seguridad para evitar desbordes de memoria en periodos enormes (ej: m=10^8)
-        if buscar_periodo and periodo is None:
-            if x_actual in valores_vistos:
-                periodo = i - valores_vistos[x_actual]
-            else:
-                if len(valores_vistos) < 100000:
-                    valores_vistos[x_actual] = i
-                else:
-                    buscar_periodo = False # Detiene la búsqueda si es muy grande
-                
-        x_actual = x_siguiente
-        
-    return pd.DataFrame(resultados), [r['U_i'] for r in resultados], periodo
-
-def generador_congruencial_multiplicativo(x0, a, m, n_iteraciones):
-    return generador_congruencial_mixto(x0, a, 0, m, n_iteraciones)
-
-def escalar_valores(serie_u, a, b):
-    return [a + (b - a) * u for u in serie_u]
-
-def test_chi_cuadrado(serie_u, k=10, alpha=0.05):
-    n = len(serie_u)
-    if n == 0: return False, 0, 0, pd.DataFrame()
-    frec_esperadas = n / k
-    frec_observadas, bordes = np.histogram(serie_u, bins=k, range=(0, 1))
-    
-    chi_calc = np.sum(((frec_observadas - frec_esperadas) ** 2) / frec_esperadas)
-    chi_tabla = stats.chi2.ppf(1 - alpha, k - 1)
-    es_uniforme = chi_calc < chi_tabla
-    
-    datos = [[f"[{bordes[i]:.1f}-{bordes[i+1]:.1f})", frec_observadas[i], frec_esperadas, 
-              (frec_observadas[i]-frec_esperadas)**2 / frec_esperadas] for i in range(k)]
-    df_chi = pd.DataFrame(datos, columns=["Intervalo", "f_o", "f_e", "((fo-fe)^2)/fe"])
-    
-    return es_uniforme, chi_calc, chi_tabla, df_chi
-
-def test_correlacion_serial(serie_u, rezago_h, alpha=0.05):
-    n = len(serie_u)
-    if n - rezago_h - 2 <= 0: return False, 0, 0, 0
-    
-    sumatoria = sum(serie_u[i] * serie_u[i + rezago_h] for i in range(n - rezago_h))
-    rho_h = ((1 / (n - rezago_h)) * sumatoria - 0.25) / (1 / 12)
-    
-    if abs(rho_h) >= 1.0: return False, rho_h, float('inf'), 0
-    
-    t_calc = (rho_h * np.sqrt(n - rezago_h - 2)) / np.sqrt(1 - rho_h**2)
-    t_tabla = stats.t.ppf(1 - alpha / 2, n - rezago_h - 2)
-    es_independiente = abs(t_calc) < t_tabla
-    
-    return es_independiente, rho_h, t_calc, t_tabla
-
-# ==========================================
-# INTERFAZ GRÁFICA (GUI)
-# ==========================================
 
 class GeneradoresApp:
     def __init__(self, root):
@@ -265,7 +157,6 @@ class GeneradoresApp:
         lbl = ttk.Label(self.tab_obligatorios, text="Ejecución de Casos de la Guía Práctica", font=("Arial", 12, "bold"))
         lbl.grid(row=0, column=0, columnspan=2, pady=10)
 
-        # Botones distribuidos en grilla
         ttk.Button(self.tab_obligatorios, text="Ej 1: Cuadrados Medios", command=self.ej_1).grid(row=1, column=0, pady=5, padx=10, sticky='ew')
         ttk.Button(self.tab_obligatorios, text="Ej 2: Fibonacci", command=self.ej_2).grid(row=1, column=1, pady=5, padx=10, sticky='ew')
         
@@ -310,7 +201,6 @@ class GeneradoresApp:
         self.mostrar_resultado("Ejercicio 3a", res)
 
     def ej_3b(self):
-        # Caso c) del 3a: X0=7, a=5, c=24, m=100
         df, serie, p = generador_congruencial_mixto(7, 5, 24, 100, 1000)
         res = f"Resultados Ej 3b (C. Mixto Caso c - 1000 iteraciones):\nPeríodo detectado: {p}\n\n"
         res += "--- Primeros 20 términos ---\n" + df.head(20).to_string(index=False)
@@ -320,13 +210,11 @@ class GeneradoresApp:
         casos = [(17, 203, 10**5), (19, 211, 10**8), (3, 221, 10**3), (7, 5, 64), (9, 11, 128)]
         res = "Resultados Ej 4 (Multiplicativo):\n\nX0\t a\t m\t Período\n" + "-"*40 + "\n"
         for x0, a, m in casos:
-            # Buscamos periodo limitando a 100k para no congelar la UI en 10^8
             _, _, p = generador_congruencial_multiplicativo(x0, a, m, min(m+5, 100000))
             res += f"{x0}\t {a}\t {m}\t {p if p else '> 100000 (Calculo truncado)'}\n"
         self.mostrar_resultado("Ejercicio 4", res)
 
     def ej_5(self):
-        # Generamos una serie aleatoria cualquiera para usar de base
         _, serie_base, _ = generador_congruencial_mixto(15, 8, 16, 100, 1000)
         intervalos = [(5, 20), (100, 500), (0.5, 3.0)]
         res = "Resultados Ej 5 (Escalado de valores):\n\n"
@@ -337,7 +225,6 @@ class GeneradoresApp:
         self.mostrar_resultado("Ejercicio 5", res)
 
     def ej_6_7(self):
-        # Usamos la serie del Ej 3b para probar
         _, serie, _ = generador_congruencial_mixto(7, 5, 24, 100, 1000)
         
         es_uni, chi_c, chi_t, df_chi = test_chi_cuadrado(serie)
@@ -350,8 +237,3 @@ class GeneradoresApp:
             res += f"h={h} | Rho: {rho:.4f} | t-calc: {t_c:.4f} | t-tabla: {t_t:.4f} -> {'Acepta H0' if es_indep else 'Rechaza'}\n"
             
         self.mostrar_resultado("Ejercicios 6 y 7", res)
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = GeneradoresApp(root)
-    root.mainloop()
