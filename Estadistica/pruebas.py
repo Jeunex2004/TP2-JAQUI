@@ -12,9 +12,14 @@ def test_chi_cuadrado(serie_u, k=10, alpha=0.05):
     chi_tabla = stats.chi2.ppf(1 - alpha, k - 1)
     es_uniforme = chi_calc < chi_tabla
     
-    datos = [[f"[{bordes[i]:.1f}-{bordes[i+1]:.1f})", frec_observadas[i], frec_esperadas, 
-              (frec_observadas[i]-frec_esperadas)**2 / frec_esperadas] for i in range(k)]
-    df_chi = pd.DataFrame(datos, columns=["Intervalo", "f_o", "f_e", "((fo-fe)^2)/fe"])
+    datos = []
+    for i in range(k):
+        fo = frec_observadas[i]
+        fe = frec_esperadas
+        dif = fo - fe
+        datos.append([f"[{bordes[i]:.2f}-{bordes[i+1]:.2f})", fo, round(fe, 2),
+                       round(dif, 2), round(dif**2, 2), round(dif**2 / fe, 4)])
+    df_chi = pd.DataFrame(datos, columns=["Intervalo", "fi", "npi", "fi-npi", "(fi-npi)²", "(fi-npi)²/npi"])
     
     return es_uniforme, chi_calc, chi_tabla, df_chi
 

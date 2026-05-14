@@ -200,8 +200,18 @@ class GeneradoresApp:
         ttk.Button(btn_frame, text="2. Ver Gráfico", command=self.mostrar_graficos_manual).pack(side=tk.LEFT, padx=2)
         ttk.Button(btn_frame, text="3. CSV", command=self.exportar_csv).pack(side=tk.LEFT, padx=2)
 
-        self.texto_resultados = tk.Text(frame_izq, height=18, width=50)
-        self.texto_resultados.grid(row=3, column=0, columnspan=2, padx=5, pady=10)
+        frame_escala = ttk.LabelFrame(frame_izq, text="Escalar a [a, b] (opcional)")
+        frame_escala.grid(row=3, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+        ttk.Label(frame_escala, text="a:").grid(row=0, column=0, padx=5, pady=5)
+        self.entry_manual_a = ttk.Entry(frame_escala, width=8)
+        self.entry_manual_a.grid(row=0, column=1, padx=5, pady=5)
+        ttk.Label(frame_escala, text="b:").grid(row=0, column=2, padx=5, pady=5)
+        self.entry_manual_b = ttk.Entry(frame_escala, width=8)
+        self.entry_manual_b.grid(row=0, column=3, padx=5, pady=5)
+        ttk.Button(frame_escala, text="Aplicar Escala", command=self.escalar_serie_manual).grid(row=0, column=4, padx=5, pady=5)
+
+        self.texto_resultados = tk.Text(frame_izq, height=15, width=50)
+        self.texto_resultados.grid(row=4, column=0, columnspan=2, padx=5, pady=10)
 
     def actualizar_campos(self, event=None):
         for widget in self.frame_params.winfo_children():
@@ -256,6 +266,26 @@ class GeneradoresApp:
         if not self.serie_actual:
             return messagebox.showwarning("Aviso", "Genere una serie primero.")
         self.dibujar_grafico_embebido(self.serie_actual, self.metodo_actual, self.frame_graf_manual)
+
+    def escalar_serie_manual(self):
+        if not self.serie_actual:
+            return messagebox.showwarning("Aviso", "Genere una serie primero.")
+        try:
+            a = float(self.entry_manual_a.get())
+            b = float(self.entry_manual_b.get())
+        except ValueError:
+            return messagebox.showerror("Error", "Ingrese valores numéricos válidos para a y b.")
+        if a >= b:
+            return messagebox.showerror("Error", "El límite 'a' debe ser menor que 'b'.")
+
+        serie_esc = escalar_valores(self.serie_actual, a, b)
+        self.texto_resultados.delete(1.0, tk.END)
+        self.texto_resultados.insert(tk.END, f"Serie escalada al intervalo [{a}, {b}]\n")
+        self.texto_resultados.insert(tk.END, f"Fórmula: X = {a} + ({b} - {a}) * U\n\n")
+        self.texto_resultados.insert(tk.END, f"Primeros 10 valores:\n{[round(v, 4) for v in serie_esc[:10]]}\n\n")
+        self.texto_resultados.insert(tk.END, f"Mínimo observado: {round(min(serie_esc), 4)}\n")
+        self.texto_resultados.insert(tk.END, f"Máximo observado: {round(max(serie_esc), 4)}\n")
+        self.dibujar_grafico_embebido(serie_esc, f"{self.metodo_actual} escalada [{a}, {b}]", self.frame_graf_manual)
 
     def construir_tab_pruebas(self):
         ttk.Button(self.tab_pruebas, text="Ejecutar Test Chi-Cuadrado y T-Student", command=self.ejecutar_pruebas).pack(pady=10)
@@ -329,11 +359,23 @@ class GeneradoresApp:
         ttk.Button(f4, text="Caso D", command=lambda: self.ej_4(7, 5, 64, "D")).pack(side=tk.LEFT, padx=2, pady=2)
         ttk.Button(f4, text="Caso E", command=lambda: self.ej_4(9, 11, 128, "E")).pack(side=tk.LEFT, padx=2, pady=2)
 
-        # Fila 3: Finales
-        f5 = ttk.LabelFrame(f45, text="Otros")
+        # Fila 3: Ej5 Escalar
+        f5 = ttk.LabelFrame(f45, text="Ej 5: Escalar Intervalo")
         f5.pack(side=tk.LEFT, fill=tk.Y)
-        ttk.Button(f5, text="Ej 5: Escalar", command=self.ej_5).pack(side=tk.LEFT, padx=5, pady=2)
-        ttk.Button(f5, text="Ej 6 y 7: Pruebas a Todos", command=self.ej_6_7).pack(side=tk.LEFT, padx=5, pady=2)
+        ttk.Label(f5, text="a:").pack(side=tk.LEFT, padx=(5, 0), pady=2)
+        self.entry_ej5_a = ttk.Entry(f5, width=6)
+        self.entry_ej5_a.insert(0, "5")
+        self.entry_ej5_a.pack(side=tk.LEFT, padx=2, pady=2)
+        ttk.Label(f5, text="b:").pack(side=tk.LEFT, padx=(5, 0), pady=2)
+        self.entry_ej5_b = ttk.Entry(f5, width=6)
+        self.entry_ej5_b.insert(0, "20")
+        self.entry_ej5_b.pack(side=tk.LEFT, padx=2, pady=2)
+        ttk.Button(f5, text="Escalar", command=self.ej_5).pack(side=tk.LEFT, padx=5, pady=2)
+
+        # Ej 6 y 7
+        f6 = ttk.LabelFrame(f45, text="Ej 6 y 7")
+        f6.pack(side=tk.LEFT, fill=tk.Y)
+        ttk.Button(f6, text="Pruebas a Todos", command=self.ej_6_7).pack(side=tk.LEFT, padx=5, pady=2)
 
         frame_contenido = ttk.Frame(self.tab_obligatorios)
         frame_contenido.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
@@ -421,40 +463,54 @@ class GeneradoresApp:
         self.mostrar_resultado_obl(res, serie_grafico, f"C. Multiplicativo - Caso {nombre_caso}")
 
     def ej_5(self):
-        _, serie_base, _ = generador_congruencial_mixto(15, 8, 16, 100, 1000)
-        intervalos = [(5, 20), (100, 500), (0.5, 3.0)] 
-        res = "=== Ej 5: Escalar Intervalos ===\n\n"
-        serie_para_graficar = []
-        
-        for a, b in intervalos:
-            res += f"--- Intervalo [{a}, {b}] ---\n"
-            if a >= b:
-                continue
-            serie_esc = escalar_valores(serie_base, a, b)
-            res += f"Primeros 5 val: {[round(v, 2) for v in serie_esc[:5]]}\n"
-            res += f"Mín: {round(min(serie_esc), 2)} | Máx: {round(max(serie_esc), 2)}\n\n"
-            if a == 0.5:
-                serie_para_graficar = serie_esc
-                
-        self.mostrar_resultado_obl(res, serie_para_graficar, "Serie Escalada [0.5, 3.0]")
+        try:
+            a = float(self.entry_ej5_a.get())
+            b = float(self.entry_ej5_b.get())
+        except ValueError:
+            return messagebox.showerror("Error", "Ingrese valores numéricos válidos para a y b.")
+        if a >= b:
+            return messagebox.showerror("Error", "El límite 'a' debe ser menor que 'b'.")
+
+        _, serie_base, _ = generador_congruencial_mixto(7, 5, 24, 100, 1000)
+        serie_esc = escalar_valores(serie_base, a, b)
+
+        res = f"=== Ej 5: Escalar al intervalo [{a}, {b}] ===\n\n"
+        res += f"Generador base: Congruencial Mixto (X0=7, a=5, c=24, m=100)\n"
+        res += f"Fórmula: X = {a} + ({b} - {a}) * U\n\n"
+        res += f"Primeros 10 valores escalados:\n"
+        res += f"{[round(v, 4) for v in serie_esc[:10]]}\n\n"
+        res += f"Mínimo observado: {round(min(serie_esc), 4)}\n"
+        res += f"Máximo observado: {round(max(serie_esc), 4)}\n"
+        self.mostrar_resultado_obl(res, serie_esc, f"Serie Escalada [{a}, {b}]")
 
     def ej_6_7(self):
         series = {
-            "Ej1 (Cuad. Medios)": generador_cuadrado_medio(1234, 1000)[1],
-            "Ej2 (Fibonacci)": generador_fibonacci(3, 5, 1024, 1000)[1],
-            "Ej3 (C. Mixto)": generador_congruencial_mixto(7, 5, 24, 100, 1000)[1],
-            "Ej4 (C. Mult)": generador_congruencial_multiplicativo(17, 203, 10**5, 1000)[1]
+            "Ej1 - Cuadrados Medios": generador_cuadrado_medio(1234, 1000)[1],
+            "Ej2 - Fibonacci": generador_fibonacci(3, 5, 1024, 1000)[1],
+            "Ej3 - C. Mixto": generador_congruencial_mixto(7, 5, 24, 100, 1000)[1],
+            "Ej4 - C. Multiplicativo": generador_congruencial_multiplicativo(17, 203, 10**5, 1000)[1]
         }
-        res = "=== EJERCICIOS 6 y 7 ===\n\n"
+        separador = "=" * 55
+        res = "=== EJERCICIOS 6 y 7: PRUEBAS ESTADÍSTICAS ===\n\n"
+
         for nombre, serie in series.items():
-            res += f"=== {nombre} ===\n"
-            es_uni, chi_c, chi_t, _ = test_chi_cuadrado(serie)
-            res += f"Chi-Cuad: Calc={chi_c:.2f} Tab={chi_t:.2f} -> {'ACEPTA' if es_uni else 'RECHAZA'}\n"
-            
-            res += "T-Student:\n"
+            res += f"{separador}\n  {nombre}\n{separador}\n\n"
+
+            # EJ 6: Chi-cuadrado — tabla completa
+            res += "[ EJ 6 ] TEST CHI-CUADRADO — Uniformidad (k=10, α=0.05)\n"
+            es_uni, chi_c, chi_t, df_chi = test_chi_cuadrado(serie)
+            res += df_chi.to_string(index=False) + "\n"
+            res += f"\nX² calc = {chi_c:.4f}  |  X² tabla (gl=9, α=0.05) = {chi_t:.4f}\n"
+            res += f"=> {'ACEPTA H0 — Serie uniforme' if es_uni else 'RECHAZA H0 — Serie NO uniforme'}\n\n"
+
+            # EJ 7: Correlación serial — tabla resumen
+            res += "[ EJ 7 ] CORRELACION SERIAL — Independencia\n"
+            res += f"  {'h':>3}  {'rho_h':>8}  {'t-calc':>8}  {'t-tabla':>8}  Decision\n"
+            res += "  " + "-" * 50 + "\n"
             for h in [1, 2, 3]:
                 es_indep, rho, t_c, t_t = test_correlacion_serial(serie, h)
-                res += f" h={h} | t-calc: {t_c:.2f} | t-tab: {t_t:.2f} -> {'Acepta' if es_indep else 'Rechaza'}\n"
+                decision = "Acepta H0" if es_indep else "Rechaza H0"
+                res += f"  {h:>3}  {rho:>8.4f}  {t_c:>8.4f}  {t_t:>8.4f}  {decision}\n"
             res += "\n"
-        
-        self.mostrar_resultado_obl(res, series["Ej4 (C. Mult)"], "Muestra Prueba (C. Multiplicativo)")
+
+        self.mostrar_resultado_obl(res, series["Ej4 - C. Multiplicativo"], "Dispersion Rezago 1 — C. Multiplicativo")
