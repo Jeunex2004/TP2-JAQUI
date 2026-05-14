@@ -23,7 +23,6 @@ class GeneradoresApp:
         self.serie_actual = []
         self.df_actual = pd.DataFrame()
         self.metodo_actual = ""
-        # Variable fundamental para que no se borren los eventos del mouse
         self.canvas_actual = None 
 
         self.notebook = ttk.Notebook(root)
@@ -42,34 +41,28 @@ class GeneradoresApp:
         self.construir_tab_obligatorios()
 
     # ==========================================
-    # FUNCIONES DE GRÁFICOS INTEGRADOS (CON TOOLTIPS SEGUROS)
+    # FUNCIONES DE GRÁFICOS INTEGRADOS
     # ==========================================
     def dibujar_grafico_embebido(self, serie, titulo, frame_destino):
-        # 1. Limpiar gráfico anterior
         for widget in frame_destino.winfo_children():
             widget.destroy()
 
         if not serie or len(serie) == 0:
             return
 
-        # 2. Crear la figura de Matplotlib
         fig = Figure(figsize=(7, 4), dpi=100)
         
-        # Histograma (Uniformidad)
         ax1 = fig.add_subplot(121)
-        
-        # Verificamos si estamos en una serie normal (0 a 1) o en el Ej 5 (Escalada)
         if min(serie) >= 0.0 and max(serie) <= 1.0:
             rango_hist = (0.0, 1.0)
         else:
-            rango_hist = None # Dejamos que Matplotlib lo ajuste solo para el Ej 5
+            rango_hist = None
 
         n, bins, barras = ax1.hist(serie, bins=10, range=rango_hist, edgecolor='black', alpha=0.7)
         ax1.axhline(y=len(serie)/10, color='r', linestyle='dashed', label='F. Esperada')
         ax1.set_title("Histograma", fontsize=10)
         ax1.legend(fontsize=8)
 
-        # Scatter Plot (Independencia)
         ax2 = fig.add_subplot(122)
         puntos_scatter = ax2.scatter(serie[:-1], serie[1:], alpha=0.5, s=10)
         ax2.set_title("Dispersión (Rezago 1)", fontsize=10)
@@ -77,22 +70,17 @@ class GeneradoresApp:
         fig.suptitle(titulo, fontsize=12, fontweight='bold')
         fig.tight_layout()
 
-        # --- LÓGICA DE ETIQUETAS FLOTANTES (TOOLTIPS) CORREGIDA ---
-        # Usamos xytext=(0, 15) para que siempre floten un poquito arriba del mouse
         annot1 = ax1.annotate("", xy=(0,0), xytext=(0, 15), textcoords="offset points",
                               bbox=dict(boxstyle="round,pad=0.3", fc="lightyellow", ec="black", alpha=1.0),
-                              arrowprops=dict(arrowstyle="->", connectionstyle="arc3"),
-                              zorder=100)
+                              arrowprops=dict(arrowstyle="->", connectionstyle="arc3"), zorder=100)
         annot1.set_clip_on(False)
 
         annot2 = ax2.annotate("", xy=(0,0), xytext=(0, 15), textcoords="offset points",
                               bbox=dict(boxstyle="round,pad=0.3", fc="lightcyan", ec="black", alpha=1.0),
-                              arrowprops=dict(arrowstyle="->", connectionstyle="arc3"),
-                              zorder=100)
+                              arrowprops=dict(arrowstyle="->", connectionstyle="arc3"), zorder=100)
         annot2.set_clip_on(False)
 
         def on_hover(event):
-            # Si salimos del área de los gráficos, ocultamos las etiquetas
             if event.inaxes is None:
                 if annot1.get_visible() or annot2.get_visible():
                     annot1.set_visible(False)
@@ -100,7 +88,6 @@ class GeneradoresApp:
                     if self.canvas_actual: self.canvas_actual.draw_idle()
                 return
 
-            # Interacción con el Histograma
             if event.inaxes == ax1:
                 annot2.set_visible(False)
                 for barra in barras:
@@ -111,7 +98,6 @@ class GeneradoresApp:
                         y = barra.get_height()
                         annot1.xy = (x + ancho / 2, y)
                         
-                        # SOLUCIÓN DEL ERROR: Solo cambiamos la alineación (ha)
                         if (x + ancho / 2) > (ax1.get_xlim()[1] * 0.6):
                             annot1.set_ha('right')
                         else:
@@ -127,7 +113,6 @@ class GeneradoresApp:
                     annot1.set_visible(False)
                     if self.canvas_actual: self.canvas_actual.draw_idle()
 
-            # Interacción con la Dispersión
             elif event.inaxes == ax2:
                 annot1.set_visible(False)
                 contiene, indices = puntos_scatter.contains(event)
@@ -136,7 +121,6 @@ class GeneradoresApp:
                     pos = puntos_scatter.get_offsets()[idx]
                     annot2.xy = pos
                     
-                    # SOLUCIÓN DEL ERROR: Solo cambiamos la alineación (ha)
                     if pos[0] > (ax2.get_xlim()[1] * 0.6):
                         annot2.set_ha('right')
                     else:
@@ -151,12 +135,9 @@ class GeneradoresApp:
                         annot2.set_visible(False)
                         if self.canvas_actual: self.canvas_actual.draw_idle()
 
-        # 3. Embeber en Tkinter GUARDANDO LA REFERENCIA
         self.canvas_actual = FigureCanvasTkAgg(fig, master=frame_destino)
         self.canvas_actual.draw()
         self.canvas_actual.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-        
-        # Conectamos el evento del mouse al canvas guardado
         self.canvas_actual.mpl_connect("motion_notify_event", on_hover)
 
     def mostrar_resultado_obl(self, texto, serie=None, titulo_grafico=""):
@@ -210,7 +191,8 @@ class GeneradoresApp:
         self.entry_manual_b.grid(row=0, column=3, padx=5, pady=5)
         ttk.Button(frame_escala, text="Aplicar Escala", command=self.escalar_serie_manual).grid(row=0, column=4, padx=5, pady=5)
 
-        self.texto_resultados = tk.Text(frame_izq, height=15, width=50)
+        # FUENTE CONSOLAS PARA ALINEAR TABLAS
+        self.texto_resultados = tk.Text(frame_izq, height=15, width=55, font=("Consolas", 10))
         self.texto_resultados.grid(row=4, column=0, columnspan=2, padx=5, pady=10)
 
     def actualizar_campos(self, event=None):
@@ -259,7 +241,7 @@ class GeneradoresApp:
             return messagebox.showwarning("Aviso", "No hay serie para exportar.")
         filepath = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV", "*.csv")])
         if filepath:
-            self.df_actual.to_csv(filepath, index=False)
+            self.df_actual.to_csv(filepath, index=False, sep=';')
             messagebox.showinfo("Éxito", "Datos exportados.")
 
     def mostrar_graficos_manual(self):
@@ -279,6 +261,8 @@ class GeneradoresApp:
             return messagebox.showerror("Error", "El límite 'a' debe ser menor que 'b'.")
 
         serie_esc = escalar_valores(self.serie_actual, a, b)
+        self.df_actual[f'Escalado [{a}, {b}]'] = serie_esc
+
         self.texto_resultados.delete(1.0, tk.END)
         self.texto_resultados.insert(tk.END, f"Serie escalada al intervalo [{a}, {b}]\n")
         self.texto_resultados.insert(tk.END, f"Fórmula: X = {a} + ({b} - {a}) * U\n\n")
@@ -289,7 +273,8 @@ class GeneradoresApp:
 
     def construir_tab_pruebas(self):
         ttk.Button(self.tab_pruebas, text="Ejecutar Test Chi-Cuadrado y T-Student", command=self.ejecutar_pruebas).pack(pady=10)
-        self.texto_pruebas = tk.Text(self.tab_pruebas, height=30, width=90)
+        # FUENTE CONSOLAS PARA ALINEAR TABLAS
+        self.texto_pruebas = tk.Text(self.tab_pruebas, height=30, width=100, font=("Consolas", 10))
         self.texto_pruebas.pack(padx=10, pady=10)
 
     def ejecutar_pruebas(self):
@@ -302,16 +287,18 @@ class GeneradoresApp:
         es_uni, chi_c, chi_t, df_chi = test_chi_cuadrado(self.serie_actual)
         self.texto_pruebas.insert(tk.END, "--- TEST CHI-CUADRADO (Uniformidad) ---\n")
         self.texto_pruebas.insert(tk.END, df_chi.to_string(index=False) + "\n")
-        self.texto_pruebas.insert(tk.END, f"Chi Calc: {chi_c:.4f} | Chi Tabla: {chi_t:.4f} -> {'ACEPTA' if es_uni else 'RECHAZA'} H0\n\n")
+        self.texto_pruebas.insert(tk.END, f"\nChi Calc: {chi_c:.4f} | Chi Tabla: {chi_t:.4f} -> {'ACEPTA' if es_uni else 'RECHAZA'} H0\n\n")
 
         self.texto_pruebas.insert(tk.END, "--- TEST T-STUDENT (Independencia) ---\n")
+        self.texto_pruebas.insert(tk.END, f"  {'h':>3}  {'rho_h':>8}  {'t-calc':>8}  {'t-tabla':>8}  Decision\n")
+        self.texto_pruebas.insert(tk.END, "  " + "-" * 50 + "\n")
         for h in [1, 2, 3]:
             es_indep, rho, t_c, t_t = test_correlacion_serial(self.serie_actual, h)
-            res = "Acepta H0" if es_indep else "Rechaza H0"
-            self.texto_pruebas.insert(tk.END, f"Rezago h={h} -> Rho: {rho:.4f} | t-calc: {t_c:.4f} | t-tabla: {t_t:.4f} | {res}\n")
+            decision = "Acepta H0" if es_indep else "Rechaza H0"
+            self.texto_pruebas.insert(tk.END, f"  {h:>3}  {rho:>8.4f}  {t_c:>8.4f}  {t_t:>8.4f}  {decision}\n")
 
     # ==========================================
-    # PESTAÑA OBLIGATORIOS (CON TABLAS RESUMEN)
+    # PESTAÑA OBLIGATORIOS
     # ==========================================
     def construir_tab_obligatorios(self):
         frame_btn = ttk.Frame(self.tab_obligatorios)
@@ -372,15 +359,24 @@ class GeneradoresApp:
         self.entry_ej5_b.pack(side=tk.LEFT, padx=2, pady=2)
         ttk.Button(f5, text="Escalar", command=self.ej_5).pack(side=tk.LEFT, padx=5, pady=2)
 
-        # Ej 6 y 7
-        f6 = ttk.LabelFrame(f45, text="Ej 6 y 7")
-        f6.pack(side=tk.LEFT, fill=tk.Y)
-        ttk.Button(f6, text="Pruebas a Todos", command=self.ej_6_7).pack(side=tk.LEFT, padx=5, pady=2)
+        # Fila 3: Ej 6 y 7 (COMBOBOX)
+        f6 = ttk.LabelFrame(f45, text="Ej 6 y 7: Pruebas Estadísticas")
+        f6.pack(side=tk.LEFT, fill=tk.Y, padx=5)
+        self.combo_ej67 = ttk.Combobox(f6, values=[
+            "Ej 1: Cuadrados Medios", 
+            "Ej 2: Fibonacci", 
+            "Ej 3: C. Mixto", 
+            "Ej 4: C. Multiplicativo"
+        ], state="readonly", width=22)
+        self.combo_ej67.current(0)
+        self.combo_ej67.pack(side=tk.LEFT, padx=5, pady=2)
+        ttk.Button(f6, text="Ejecutar Test", command=self.ej_6_7_individual).pack(side=tk.LEFT, padx=5, pady=2)
 
         frame_contenido = ttk.Frame(self.tab_obligatorios)
         frame_contenido.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
-        self.txt_obligatorios = tk.Text(frame_contenido, width=45)
+        # FUENTE CONSOLAS Y MAYOR ANCHO (WIDTH=70) PARA ALINEAR LAS TABLAS PERFECTAMENTE
+        self.txt_obligatorios = tk.Text(frame_contenido, width=70, wrap=tk.NONE, font=("Consolas", 9))
         self.txt_obligatorios.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 10))
 
         self.frame_graf_obl = ttk.Frame(frame_contenido)
@@ -483,34 +479,39 @@ class GeneradoresApp:
         res += f"Máximo observado: {round(max(serie_esc), 4)}\n"
         self.mostrar_resultado_obl(res, serie_esc, f"Serie Escalada [{a}, {b}]")
 
-    def ej_6_7(self):
-        series = {
-            "Ej1 - Cuadrados Medios": generador_cuadrado_medio(1234, 1000)[1],
-            "Ej2 - Fibonacci": generador_fibonacci(3, 5, 1024, 1000)[1],
-            "Ej3 - C. Mixto": generador_congruencial_mixto(7, 5, 24, 100, 1000)[1],
-            "Ej4 - C. Multiplicativo": generador_congruencial_multiplicativo(17, 203, 10**5, 1000)[1]
-        }
+    def ej_6_7_individual(self):
+        seleccion = self.combo_ej67.get()
+        
+        if "Ej 1" in seleccion:
+            _, serie = generador_cuadrado_medio(1234, 1000)
+            nombre = "Ej 1 - Cuadrados Medios"
+        elif "Ej 2" in seleccion:
+            _, serie = generador_fibonacci(3, 5, 1024, 1000)
+            nombre = "Ej 2 - Fibonacci"
+        elif "Ej 3" in seleccion:
+            _, serie, _ = generador_congruencial_mixto(7, 5, 24, 100, 1000)
+            nombre = "Ej 3 - C. Mixto"
+        else:
+            _, serie, _ = generador_congruencial_multiplicativo(17, 203, 10**5, 1000)
+            nombre = "Ej 4 - C. Multiplicativo"
+
         separador = "=" * 55
         res = "=== EJERCICIOS 6 y 7: PRUEBAS ESTADÍSTICAS ===\n\n"
+        res += f"{separador}\n  {nombre}\n{separador}\n\n"
 
-        for nombre, serie in series.items():
-            res += f"{separador}\n  {nombre}\n{separador}\n\n"
+        res += "[ EJ 6 ] TEST CHI-CUADRADO — Uniformidad (k=10, α=0.05)\n"
+        es_uni, chi_c, chi_t, df_chi = test_chi_cuadrado(serie)
+        res += df_chi.to_string(index=False) + "\n"
+        res += f"\nX² calc = {chi_c:.4f}  |  X² tabla (gl=9, α=0.05) = {chi_t:.4f}\n"
+        res += f"=> {'ACEPTA H0 — Serie uniforme' if es_uni else 'RECHAZA H0 — Serie NO uniforme'}\n\n"
 
-            # EJ 6: Chi-cuadrado — tabla completa
-            res += "[ EJ 6 ] TEST CHI-CUADRADO — Uniformidad (k=10, α=0.05)\n"
-            es_uni, chi_c, chi_t, df_chi = test_chi_cuadrado(serie)
-            res += df_chi.to_string(index=False) + "\n"
-            res += f"\nX² calc = {chi_c:.4f}  |  X² tabla (gl=9, α=0.05) = {chi_t:.4f}\n"
-            res += f"=> {'ACEPTA H0 — Serie uniforme' if es_uni else 'RECHAZA H0 — Serie NO uniforme'}\n\n"
+        res += "[ EJ 7 ] CORRELACION SERIAL — Independencia\n"
+        res += f"  {'h':>3}  {'rho_h':>8}  {'t-calc':>8}  {'t-tabla':>8}  Decision\n"
+        res += "  " + "-" * 50 + "\n"
+        for h in [1, 2, 3]:
+            es_indep, rho, t_c, t_t = test_correlacion_serial(serie, h)
+            decision = "Acepta H0" if es_indep else "Rechaza H0"
+            res += f"  {h:>3}  {rho:>8.4f}  {t_c:>8.4f}  {t_t:>8.4f}  {decision}\n"
+        res += "\n"
 
-            # EJ 7: Correlación serial — tabla resumen
-            res += "[ EJ 7 ] CORRELACION SERIAL — Independencia\n"
-            res += f"  {'h':>3}  {'rho_h':>8}  {'t-calc':>8}  {'t-tabla':>8}  Decision\n"
-            res += "  " + "-" * 50 + "\n"
-            for h in [1, 2, 3]:
-                es_indep, rho, t_c, t_t = test_correlacion_serial(serie, h)
-                decision = "Acepta H0" if es_indep else "Rechaza H0"
-                res += f"  {h:>3}  {rho:>8.4f}  {t_c:>8.4f}  {t_t:>8.4f}  {decision}\n"
-            res += "\n"
-
-        self.mostrar_resultado_obl(res, series["Ej4 - C. Multiplicativo"], "Dispersion Rezago 1 — C. Multiplicativo")
+        self.mostrar_resultado_obl(res, serie, f"Pruebas — {nombre}")
