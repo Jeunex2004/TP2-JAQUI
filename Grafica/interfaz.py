@@ -12,7 +12,7 @@ from Grafica.tab_obligatorios import TabObligatoriosMixin
 class GeneradoresApp(GraficosMixin, TabManualMixin, TabPruebasMixin, TabObligatoriosMixin):
     def __init__(self, root):
         self.root = root
-        self.root.title("TP3 - Generadores Pseudoaleatorios")
+        self.root.title("TP2 - Generadores Pseudoaleatorios")
         self.root.geometry("1280x750")
         
         # Variables de estado compartidas en todo el programa

@@ -71,5 +71,7 @@ def generador_congruencial_mixto(x0, a, c, m, n_iteraciones):
 def generador_congruencial_multiplicativo(x0, a, m, n_iteraciones):
     return generador_congruencial_mixto(x0, a, 0, m, n_iteraciones)
 
+# Función para escalar los valores de la serie U a un rango [a, b]
+
 def escalar_valores(serie_u, a, b):
     return [a + (b - a) * u for u in serie_u]
